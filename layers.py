@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.autograd import Variable
+from normalizers import *
 torch.manual_seed(0)
 
 class GatedConv2dWithActivation(torch.nn.Module):
@@ -88,6 +89,28 @@ def get_conv2d_bn2d_generator_block(input_dim, output_dim, kernel_s, stride, pad
           nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
           nn.ReLU(inplace=True)
       )
+
+def get_swn_conv2d_bn2d_generator_block(input_dim, output_dim, kernel_s, stride, pad, batch_n):
+    '''
+    Function for returning a block of the generator's neural network
+    given input and output dimensions.
+    Parameters:
+        input_dim: the dimension of the input vector, a scalar
+        output_dim: the dimension of the output vector, a scalar
+    Returns:
+        a generator neural network layer, with a linear transformation 
+          followed by a batch normalization and then a relu activation
+    '''
+    if batch_n:
+      return nn.Sequential(
+          nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
+          SpectralNormTorch(output_dim),
+          nn.ReLU(inplace=True)
+      )
+    return nn.Sequential(
+          nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
+          nn.ReLU(inplace=True)
+      )
     
 
 def get_gated_conv_generator_block(input_dim, output_dim, kernel_s, stride, pad):
@@ -103,6 +126,22 @@ def get_gated_conv_generator_block(input_dim, output_dim, kernel_s, stride, pad)
     return nn.Sequential(
         nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
         nn.BatchNorm2d(output_dim),
+        nn.ReLU(inplace=True)
+    )
+
+def get_swn_gated_conv_generator_block(input_dim, output_dim, kernel_s, stride, pad):
+    '''
+    Gated Conv Discriminator Block with activation
+    Function for returning a neural network of the discriminator given input and output dimensions.
+    Parameters:
+        input_dim: the dimension of the input vector, a scalar
+        output_dim: the dimension of the output vector, a scalar
+    Returns:
+        a discriminator neural network layer, with a linear transformation 
+    '''
+    return nn.Sequential(
+        nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
+        SpectralNormTorch(output_dim),
         nn.ReLU(inplace=True)
     )
     
@@ -156,3 +195,36 @@ def get_gated_conv_discriminator_block(input_dim, output_dim, kernel_size, strid
         nn.BatchNorm2d(output_dim),
         nn.LeakyReLU(0.2, inplace=True)
     )
+
+def get_swn_gated_conv_discriminator_block(input_dim, output_dim, kernel_size, stride, pad):
+    '''
+    Gated Conv Discriminator Block with activation
+    Function for returning a neural network of the discriminator given input and output dimensions.
+    Parameters:
+        input_dim: the dimension of the input vector, a scalar
+        output_dim: the dimension of the output vector, a scalar
+    Returns:
+        a discriminator neural network layer, with a linear transformation 
+    '''
+    return nn.Sequential(
+        GatedConv2dWithActivation(input_dim, output_dim, kernel_size, stride, pad),
+        SpectralNormTorch(output_dim),
+        nn.LeakyReLU(0.2, inplace=True)
+    )
+
+def get_swn_conv2d_bn2d_discriminator_block(input_dim, output_dim, kernel_size, pad):
+    '''
+    Specteral Weight Normalization Conv Discriminator Block with activation
+    Function for returning a neural network of the discriminator given input and output dimensions.
+    Parameters:
+        input_dim: the dimension of the input vector, a scalar
+        output_dim: the dimension of the output vector, a scalar
+    Returns:
+        a discriminator neural network layer, with a linear transformation and speteral normalization 
+    '''
+    return nn.Sequential(
+        nn.Conv2d(input_dim, output_dim, kernel_size, 2, pad),
+        SpectralNormTorch(output_dim),
+        nn.LeakyReLU(0.2, inplace=True)
+    )
+

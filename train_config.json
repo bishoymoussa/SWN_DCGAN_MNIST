@@ -1,0 +1,6 @@
+{
+    "arch_type" : "2D",
+    "nn_type" : "linear",
+    "batch_size": "128",
+    "n_epochs": "1000"
+}
