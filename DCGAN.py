@@ -6,12 +6,12 @@ from torchvision.datasets import MNIST # Training dataset
 from torchvision.utils import make_grid
 from torch.utils.data import DataLoader
 from layers import *
-from utils import show_result
+from utils import show_result, show
 from losses import *
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
 torch.manual_seed(0) # Set for testing purposes, please do not change!
+
 train_hist = {}
 train_hist['D_losses'] = []
 train_hist['G_losses'] = []

@@ -1,12 +1,6 @@
 import torch
-from torch import nn
-from tqdm.auto import tqdm
-from torchvision import transforms, datasets
-from torchvision.datasets import MNIST # Training dataset
 from torchvision.utils import make_grid
-from torch.utils.data import DataLoader
-from layers import *
-from utils import show_result
+import itertools
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
@@ -27,55 +21,59 @@ def get_noise(n_samples, z_dim, device='cuda'):
     noise_ = Variable(noise_.cuda())
     return noise_
 
-def get_disc_loss(gen, disc, criterion, real, num_images, z_dim, device):
+def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28)):
     '''
-    Return the loss of the discriminator given inputs.
-    Parameters:
-        gen: the generator model, which returns an image given z-dimensional noise
-        disc: the discriminator model, which returns a single-dimensional prediction of real/fake
-        criterion: the loss function, which should be used to compare 
-               the discriminator's predictions to the ground truth reality of the images 
-               (e.g. fake = 0, real = 1)
-        real: a batch of real images
-        num_images: the number of images the generator should produce, 
-                which is also the length of the real images
-        z_dim: the dimension of the noise vector, a scalar
-        device: the device type
-    Returns:
-        disc_loss: a torch scalar loss value for the current batch
+    Function for visualizing images: Given a tensor of images, number of images, and
+    size per image, plots and prints the images in a uniform grid.
     '''
-    y_real_samples = torch.ones(num_images)
-    y_fake_samples = torch.zeros(num_images)
-    real , y_real_samples, y_fake_samples = Variable(real.cuda()), Variable(y_real_samples.cuda()), Variable(y_fake_samples.cuda())
-    fake_noise = get_noise(num_images, z_dim, device=device)
-    disc_output = disc(real).squeeze()
-    disc_real_loss = criterion(disc_output, y_real_samples)
-    fake_noise = Variable(fake_noise.cuda())
-    gen_output = gen(fake_noise)
-    disc_output = disc(gen_output).squeeze()
-    disc_fake_loss = criterion(disc_output, y_fake_samples)
-    disc_fake_score = disc_output.data.mean()
-    return disc_fake_loss, disc_fake_score, disc_real_loss, y_real_samples
+    image_unflat = image_tensor.detach().cpu().view(-1, *size)
+    image_grid = make_grid(image_unflat[:num_images], nrow=5)
+    plt.imshow(image_grid.permute(1, 2, 0).squeeze())
+    plt.show()
 
-def get_gen_loss(gen, disc, criterion, num_images, z_dim, device, y_real_samples):
-    '''
-    Return the loss of the generator given inputs.
-    Parameters:
-        gen: the generator model, which returns an image given z-dimensional noise
-        disc: the discriminator model, which returns a single-dimensional prediction of real/fake
-        criterion: the loss function, which should be used to compare 
-               the discriminator's predictions to the ground truth reality of the images 
-               (e.g. fake = 0, real = 1)
-        num_images: the number of images the generator should produce, 
-                which is also the length of the real images
-        z_dim: the dimension of the noise vector, a scalar
-        device: the device type
-    Returns:
-        gen_loss: a torch scalar loss value for the current batch
-    '''
+def show_train_hist(hist, path = 'Train_hist.png'):
+    x = range(len(hist['D_losses']))
 
-    fake_noise = get_noise(num_images, z_dim, device=device)
-    gen_output = gen(fake_noise)
-    disc_output = disc(gen_output).squeeze()
-    gen_train_loss = criterion(disc_output, y_real_samples)
-    return gen_train_loss
+    y1 = hist['D_losses']
+    y2 = hist['G_losses']
+
+    plt.plot(x, y1, label='D_loss')
+    plt.plot(x, y2, label='G_loss')
+
+    plt.xlabel('Iter')
+    plt.ylabel('Loss')
+
+    plt.legend(loc=4)
+    plt.grid(True)
+    plt.tight_layout()
+
+    plt.savefig(path)
+
+fixed_z_ = torch.randn((5 * 5, 100)).view(-1, 100, 1, 1)    # fixed noise
+fixed_z_ = Variable(fixed_z_.cuda(), volatile=True)
+def show_result(num_epoch, gen, path = 'result.png', isFix=False):
+    z_ = torch.randn((5*5, 100)).view(-1, 100, 1, 1)
+    z_ = Variable(z_.cuda(), volatile=True)
+
+    gen.eval()
+    if isFix:
+        test_images = gen(fixed_z_)
+    else:
+        test_images = G(z_)
+    gen.train()
+
+    size_figure_grid = 5
+    fig, ax = plt.subplots(size_figure_grid, size_figure_grid, figsize=(5, 5))
+    for i, j in itertools.product(range(size_figure_grid), range(size_figure_grid)):
+        ax[i, j].get_xaxis().set_visible(False)
+        ax[i, j].get_yaxis().set_visible(False)
+
+    for k in range(5*5):
+        i = k // 5
+        j = k % 5
+        ax[i, j].cla()
+        ax[i, j].imshow(test_images[k, 0].cpu().data.numpy(), cmap='gray')
+
+    label = 'Epoch {0}'.format(num_epoch)
+    fig.text(0.5, 0.04, label, ha='center')
+    plt.savefig(path)
