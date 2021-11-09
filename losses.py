@@ -43,8 +43,8 @@ def get_disc_loss(gen, disc, criterion, real, num_images, z_dim, device, arch_ty
     Returns:
         disc_loss: a torch scalar loss value for the current batch
     '''
-    y_real_samples = torch.ones(num_images)
-    y_fake_samples = torch.zeros(num_images)
+    y_real_samples = torch.ones(num_images, 4, 4)
+    y_fake_samples = torch.zeros(num_images, 4, 4)
     real , y_real_samples, y_fake_samples = Variable(real.cuda()), Variable(y_real_samples.cuda()), Variable(y_fake_samples.cuda())
     disc_output = disc(real).squeeze()
     disc_real_loss = criterion(disc_output, y_real_samples)

@@ -1,6 +1,6 @@
 {
     "arch_type" : "2D",
-    "nn_type" : "convbn2d",
+    "nn_type" : "swnconvbn2d",
     "batch_size": "256",
     "n_epochs": "2",
     "display_step":"2",

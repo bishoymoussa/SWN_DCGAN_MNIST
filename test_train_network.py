@@ -1,5 +1,7 @@
+from threading import Semaphore
 import torch
 from torch import nn
+from torch.nn.functional import leaky_relu
 from tqdm.auto import tqdm
 from torchvision import transforms, datasets
 from torchvision.datasets import MNIST # Training dataset
@@ -154,14 +156,16 @@ class Discriminator(nn.Module):
                 nn.Sigmoid()
             )
         elif nn_type == 'swnconvbn2d':
-            self.gen = nn.Sequential(
-                get_swn_conv2d_bn2d_discriminator_block(z_dim, hidden_dim * 8, 4, 1, 0, True),
-                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 8, hidden_dim * 4, 4, 2, 1, True),
-                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 4, hidden_dim * 2, 4, 2, 1, True),
-                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 2, hidden_dim, 4, 2 ,1, True),
-                get_swn_conv2d_bn2d_discriminator_block(hidden_dim, 1, 4, 2, 1, False),
-                nn.Tanh()
+            self.disc = nn.Sequential(
+                nn.Conv2d(1, hidden_dim, 4, 2, 1),
+                nn.LeakyReLU(0.2, inplace=True),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim, hidden_dim * 2, 4, 1),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 2, hidden_dim * 4, 4, 1),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 4, hidden_dim * 8, 3, 1),
+                nn.Conv2d(hidden_dim * 8, 1, 4, 1, 0), 
+                nn.Sigmoid()
             )
+
         elif nn_type == 'gconv2d':
             self.disc = nn.Sequential(
                 GatedConv2dWithActivation(1, hidden_dim, 4, 1, 0),
@@ -201,7 +205,9 @@ class Discriminator(nn.Module):
             the sequential model
         '''
         return self.disc
-    
+
+
+
 def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visualize):
     n_epochs = int(n_epochs)
     arch_type = arch_type
@@ -211,7 +217,7 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
     display_step = int(display_step)
     
     if arch_type == '2D':
-        criterion = nn.BCELoss()    
+        criterion = nn.BCEWithLogitsLoss()#nn.BCELoss()    
         lr = 0.0002
         # Load the MNIST data in Grayscale Format
         img_size = 64
@@ -238,15 +244,21 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
 
 
     # Initialize The Generator and Discriminator Networks
-    gen = Generator(nn_type=nn_type, z_dim=z_dim).to(device)
-    disc = Discriminator(nn_type=nn_type, z_dim=z_dim).to(device)
+    # gen = Generator(nn_type=nn_type, z_dim=z_dim).to(device)
+    # disc = Discriminator(nn_type=nn_type, z_dim=z_dim).to(device)
+    gen = Generator(128).to(device)
+    disc = Discriminator().to(device)
     
-    if arch_type == "2D":
-        gen.weight_init(mean=0.0, std=0.02)
-        disc.weight_init(mean=0.0, std=0.02)
-
-    gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
-    disc_opt = torch.optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
+    
+    # if arch_type == "2D":
+    #     gen.weight_init(mean=0.0, std=0.02)
+    #     disc.weight_init(mean=0.0, std=0.02)
+    if nn_type == "swnconvbn2d":
+        disc_opt = torch.optim.Adam(filter(lambda p: p.requires_grad, disc.parameters()), lr=lr, betas=(0.0,0.9))
+        gen_opt  = torch.optim.Adam(disc.parameters(), lr=lr, betas=(0.0,0.9))
+    else:
+        gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
+        disc_opt = torch.optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
 
 
     cur_step = 0
@@ -273,7 +285,7 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
                 disc_train_loss.backward() # removed retain graph for memory consumption
                 # Update optimizer
                 disc_opt.step()
-                D_losses.append(disc_train_loss.data[0])
+                D_losses.append(disc_train_loss.item())
                 # For testing purposes, to keep track of the generator weights
                 if test_generator:
                     old_generator_weights = gen.gen[0][0].weight.detach().clone()
@@ -282,7 +294,7 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
                 gen_train_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device, y_real_samples, arch_type)
                 gen_train_loss.backward()
                 gen_opt.step()
-                G_losses.append(gen_train_loss.data[0])
+                G_losses.append(gen_train_loss.item())
                 # For testing purposes, to check that your code changes the generator weights
                 if test_generator:
                     try:
@@ -292,24 +304,14 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
                         error = True
                         print("Runtime tests have failed")
 
-                # Keep track of the average discriminator loss
-                mean_discriminator_loss += disc_train_loss.item() / display_step
-                # Keep track of the average generator loss
-                mean_generator_loss += gen_loss.item() / display_step
-
                 ### Visualization code ###
                 if cur_step % display_step == 0 and cur_step > 0:
-                    # print(f"Epoch: {epoch} Step {cur_step}: Generator loss: {mean_generator_loss}, discriminator loss: {mean_discriminator_loss}")
+                    # print(f"Step {cur_step}: Generator loss: {gen_train_loss.item()}, discriminator loss: {disc_train_loss.item()}")
                     if visualize == "YES":
                         p = 'results/MNIST_DCGAN_' + str(nn_type) + '_' +  str(epoch + 1) + '.png'
                         show_result((epoch+1), gen, path=p, isFix=False)
                     train_hist['D_losses'].append(torch.mean(torch.FloatTensor(D_losses)))
-                    print(train_hist['D_losses'])
-                    print(train_hist['G_losses'])
                     train_hist['G_losses'].append(torch.mean(torch.FloatTensor(G_losses)))  
-                    mean_generator_loss = 0
-                    mean_discriminator_loss = 0
-
             
                 cur_step += 1
         show_train_hist(train_hist, path='plots/MNIST_DCGAN_{}_train_hist.png'.format(nn_type))

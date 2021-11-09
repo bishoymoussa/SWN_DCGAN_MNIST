@@ -101,10 +101,11 @@ def get_swn_conv2d_bn2d_generator_block(input_dim, output_dim, kernel_s, stride,
         a generator neural network layer, with a linear transformation 
           followed by a batch normalization and then a relu activation
     '''
+    swn = SpectralNorm()
     if batch_n:
       return nn.Sequential(
           nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
-          SpectralNorm(output_dim),
+          swn,
           nn.ReLU(inplace=True)
       )
     return nn.Sequential(
@@ -139,9 +140,10 @@ def get_swn_gated_conv_generator_block(input_dim, output_dim, kernel_s, stride, 
     Returns:
         a discriminator neural network layer, with a linear transformation 
     '''
+    swn = SpectralNorm()
     return nn.Sequential(
         nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
-        SpectralNorm(output_dim),
+        nn.BatchNorm2d(output_dim),
         nn.ReLU(inplace=True)
     )
     
@@ -206,9 +208,10 @@ def get_swn_gated_conv_discriminator_block(input_dim, output_dim, kernel_size, s
     Returns:
         a discriminator neural network layer, with a linear transformation 
     '''
+    swn = SpectralNorm()
     return nn.Sequential(
         GatedConv2dWithActivation(input_dim, output_dim, kernel_size, stride, pad),
-        SpectralNorm(output_dim),
+        swn,
         nn.LeakyReLU(0.2, inplace=True)
     )
 
@@ -224,7 +227,7 @@ def get_swn_conv2d_bn2d_discriminator_block(input_dim, output_dim, kernel_size, 
     '''
     return nn.Sequential(
         nn.Conv2d(input_dim, output_dim, kernel_size, 2, pad),
-        SpectralNorm(output_dim),
+        SpectralNorm(),
         nn.LeakyReLU(0.2, inplace=True)
     )
 
