@@ -279,9 +279,10 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
                     old_generator_weights = gen.gen[0][0].weight.detach().clone()
                 ### Update generator ###
                 gen_opt.zero_grad()
-                gen_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device, y_real_samples, arch_type)
-                gen_loss.backward()
+                gen_train_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device, y_real_samples, arch_type)
+                gen_train_loss.backward()
                 gen_opt.step()
+                G_losses.append(gen_train_loss.data[0])
                 # For testing purposes, to check that your code changes the generator weights
                 if test_generator:
                     try:
@@ -292,9 +293,7 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
                         print("Runtime tests have failed")
 
                 # Keep track of the average discriminator loss
-                mean_discriminator_loss += disc_fake_loss.item() / display_step
-                D_losses.append(disc_fake_loss)
-                gen_loss_values.append(gen_loss)
+                mean_discriminator_loss += disc_train_loss.item() / display_step
                 # Keep track of the average generator loss
                 mean_generator_loss += gen_loss.item() / display_step
 
@@ -313,7 +312,7 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
 
             
                 cur_step += 1
-        show_train_hist(train_hist, path='MNIST_DCGAN_train_hist.png')
+        show_train_hist(train_hist, path='plots/MNIST_DCGAN_{}_train_hist.png'.format(nn_type))
         plt.plot(train_hist['D_losses'])
         plt.plot(train_hist['G_losses'])
         plt.savefig("plots/MNIST_DCGAN_{}_LOSSES.png".format('nn_type'))
