@@ -43,28 +43,20 @@ def get_disc_loss(gen, disc, criterion, real, num_images, z_dim, device, arch_ty
     Returns:
         disc_loss: a torch scalar loss value for the current batch
     '''
-    if arch_type == '2D':
-        y_real_samples = torch.ones(num_images)
-        y_fake_samples = torch.zeros(num_images)
-        real , y_real_samples, y_fake_samples = Variable(real.cuda()), Variable(y_real_samples.cuda()), Variable(y_fake_samples.cuda())
-        fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
-        disc_output = disc(real).squeeze()
-        disc_real_loss = criterion(disc_output, y_real_samples)
-        fake_noise = Variable(fake_noise.cuda())
-        gen_output = gen(fake_noise)
-        disc_output = disc(gen_output).squeeze()
-        disc_fake_loss = criterion(disc_output, y_fake_samples)
-        disc_fake_score = disc_output.data.mean()
-        return disc_fake_loss, disc_fake_score, disc_real_loss, y_real_samples
-    else:
-        fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
-        fake = gen(fake_noise)
-        disc_fake_pred = disc(fake.detach())
-        disc_fake_loss = criterion(disc_fake_pred, torch.zeros_like(disc_fake_pred))
-        disc_real_pred = disc(real)
-        disc_real_loss = criterion(disc_real_pred, torch.ones_like(disc_real_pred))
-        disc_loss = (disc_fake_loss + disc_real_loss) / 2
-        return disc_loss
+    y_real_samples = torch.ones(num_images)
+    y_fake_samples = torch.zeros(num_images)
+    real , y_real_samples, y_fake_samples = Variable(real.cuda()), Variable(y_real_samples.cuda()), Variable(y_fake_samples.cuda())
+    disc_output = disc(real).squeeze()
+    disc_real_loss = criterion(disc_output, y_real_samples)
+    fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
+    fake_noise = Variable(fake_noise.cuda())
+    gen_output = gen(fake_noise)
+    disc_output = disc(gen_output).squeeze()
+    disc_fake_loss = criterion(disc_output, y_fake_samples)
+    disc_fake_score = disc_output.data.mean()
+    disc_train_loss = disc_real_loss + disc_fake_loss
+    return disc_train_loss, disc_fake_score, disc_real_loss, y_real_samples
+
 
 def get_gen_loss(gen, disc, criterion, num_images, z_dim, device, y_real_samples, arch_type):
     '''
@@ -82,28 +74,21 @@ def get_gen_loss(gen, disc, criterion, num_images, z_dim, device, y_real_samples
     Returns:
         gen_loss: a torch scalar loss value for the current batch
     '''
-    if arch_type == '2D':
-        fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
-        gen_output = gen(fake_noise)
-        disc_output = disc(gen_output).squeeze()
-        gen_train_loss = criterion(disc_output, y_real_samples)
-        return gen_train_loss
-    else:
-        fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
-        fake = gen(fake_noise)
-        disc_fake_pred = disc(fake)
-        gen_loss = criterion(disc_fake_pred, torch.ones_like(disc_fake_pred))
-        return gen_loss
+    fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
+    gen_output = gen(fake_noise)
+    disc_output = disc(gen_output).squeeze()
+    gen_train_loss = criterion(disc_output, y_real_samples)
+    return gen_train_loss
 
-def get_gen_loss_1d(gen, disc, criterion, num_images, z_dim, device):
-    fake_noise = get_noise(num_images, z_dim, device=device)
+def get_gen_loss_1d(gen, disc, criterion, num_images, z_dim, arch_type, device):
+    fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
     fake = gen(fake_noise)
     disc_fake_pred = disc(fake)
     gen_loss = criterion(disc_fake_pred, torch.ones_like(disc_fake_pred))
     return gen_loss
 
-def get_disc_loss_1d(gen, disc, criterion, real, num_images, z_dim, device):
-    fake_noise = get_noise(num_images, z_dim, device=device)
+def get_disc_loss_1d(gen, disc, criterion, real, num_images, z_dim, arch_type, device):
+    fake_noise = get_noise(num_images, z_dim, arch_type, device=device)
     fake = gen(fake_noise)
     disc_fake_pred = disc(fake.detach())
     disc_fake_loss = criterion(disc_fake_pred, torch.zeros_like(disc_fake_pred))

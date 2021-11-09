@@ -22,7 +22,7 @@ def get_noise(n_samples, z_dim, arch_type, device='cuda'):
         noise_ = Variable(noise_.cuda())
         return noise_
 
-def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28)):
+def show_tensor_images(image_tensor,epoch, nn_type, num_images=25, size=(1, 28, 28)):
     '''
     Function for visualizing images: Given a tensor of images, number of images, and
     size per image, plots and prints the images in a uniform grid.
@@ -30,9 +30,9 @@ def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28)):
     image_unflat = image_tensor.detach().cpu().view(-1, *size)
     image_grid = make_grid(image_unflat[:num_images], nrow=5)
     plt.imshow(image_grid.permute(1, 2, 0).squeeze())
-    plt.show()
+    plt.savefig('results/gen_disc_loss_{}_epoch_{}.png'.format(nn_type, str(epoch)))
 
-def show_train_hist(hist, path = 'Train_hist.png'):
+def show_train_hist(hist, path):
     x = range(len(hist['D_losses']))
 
     y1 = hist['D_losses']

@@ -6,7 +6,7 @@ from torchvision.datasets import MNIST # Training dataset
 from torchvision.utils import make_grid
 from torch.utils.data import DataLoader
 from layers import *
-from utils import show_result, show_train_hist
+from utils import show_result, show_train_hist, show_tensor_images
 from losses import *
 import matplotlib.pyplot as plt
 from torch.autograd import Variable
@@ -18,16 +18,6 @@ train_hist['D_losses'] = []
 train_hist['G_losses'] = []
 train_hist['per_epoch_ptimes'] = []
 train_hist['total_ptime'] = []
-
-def show_tensor_images(image_tensor, num_images=25, size=(1, 64, 64)):
-    '''
-    Function for visualizing images: Given a tensor of images, number of images, and
-    size per image, plots and prints the images in a uniform grid.
-    '''
-    image_unflat = image_tensor.detach().cpu().view(-1, *size)
-    image_grid = make_grid(image_unflat[:num_images], nrow=5)
-    plt.plot(image_grid.permute(1, 2, 0).squeeze())
-    plt.savefig('gen_disc_loss.png')
 
 def normal_init(m, mean, std):
     '''
@@ -50,14 +40,14 @@ class Generator(nn.Module):
     def __init__(self, z_dim=100, im_dim=784, hidden_dim=128, nn_type='linear'):
         super(Generator, self).__init__()
         if nn_type == 'linear':
-          self.gen = nn.Sequential(
-              get_linear_generator_block(z_dim, hidden_dim),
-              get_linear_generator_block(hidden_dim, hidden_dim * 2),
-              get_linear_generator_block(hidden_dim * 2, hidden_dim * 4),
-              get_linear_generator_block(hidden_dim * 4, hidden_dim * 8),
-              nn.Linear(hidden_dim * 8, im_dim),
-              nn.Sigmoid()
-          )
+            self.gen = nn.Sequential(
+                get_linear_generator_block(z_dim, hidden_dim),
+                get_linear_generator_block(hidden_dim, hidden_dim * 2),
+                get_linear_generator_block(hidden_dim * 2, hidden_dim * 4),
+                get_linear_generator_block(hidden_dim * 4, hidden_dim * 8),
+                nn.Linear(hidden_dim * 8, im_dim),
+                nn.Sigmoid()
+            )
         elif nn_type == 'bn':
           self.gen = nn.Sequential(
               get_bn_generator_block(z_dim, hidden_dim),
@@ -137,22 +127,22 @@ class Discriminator(nn.Module):
         hidden_dim: the inner dimension, a scalar
         nn_type = Used to determine the Network type from ['linear', 'bn', 'convbn2d', 'swnconvbn2d', 'gconv2d', 'swngconv2d']
     '''
-    def __init__(self, im_dim=784, hidden_dim=128, nn_type='linear'):
+    def __init__(self, z_dim=100, im_dim=784, hidden_dim=128, nn_type='linear'):
         super(Discriminator, self).__init__()
         if nn_type == 'linear':
-          self.disc = nn.Sequential(
-              get_linear_discriminator_block(im_dim, hidden_dim * 4),
-              get_linear_discriminator_block(hidden_dim * 4, hidden_dim * 2),
-              get_linear_discriminator_block(hidden_dim * 2, hidden_dim),
-              nn.Linear(hidden_dim, 1)
-          )
+            self.disc = nn.Sequential(
+                get_linear_discriminator_block(im_dim, hidden_dim * 4),
+                get_linear_discriminator_block(hidden_dim * 4, hidden_dim * 2),
+                get_linear_discriminator_block(hidden_dim * 2, hidden_dim),
+                nn.Linear(hidden_dim, 1)
+            )
         elif nn_type == 'bn':
-          self.disc = nn.Sequential(
-              get_linear_discriminator_block(im_dim, hidden_dim * 4),
-              get_linear_discriminator_block(hidden_dim * 4, hidden_dim * 2),
-              get_linear_discriminator_block(hidden_dim * 2, hidden_dim),
-              nn.Linear(hidden_dim, 1)
-          )
+            self.disc = nn.Sequential(
+                get_linear_discriminator_block(im_dim, hidden_dim * 4),
+                get_linear_discriminator_block(hidden_dim * 4, hidden_dim * 2),
+                get_linear_discriminator_block(hidden_dim * 2, hidden_dim),
+                nn.Linear(hidden_dim, 1)
+            )
         elif nn_type == 'convbn2d':
             self.disc = nn.Sequential(
                 nn.Conv2d(1, hidden_dim, 4, 2, 1),
@@ -164,14 +154,14 @@ class Discriminator(nn.Module):
                 nn.Sigmoid()
             )
         elif nn_type == 'swnconvbn2d':
-          self.gen = nn.Sequential(
-              get_swn_conv2d_bn2d_discriminator_block(z_dim, hidden_dim * 8, 4, 1, 0, True),
-              get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 8, hidden_dim * 4, 4, 2, 1, True),
-              get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 4, hidden_dim * 2, 4, 2, 1, True),
-              get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 2, hidden_dim, 4, 2 ,1, True),
-              get_swn_conv2d_bn2d_discriminator_block(hidden_dim, 1, 4, 2, 1, False),
-              nn.Tanh()
-          )
+            self.gen = nn.Sequential(
+                get_swn_conv2d_bn2d_discriminator_block(z_dim, hidden_dim * 8, 4, 1, 0, True),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 8, hidden_dim * 4, 4, 2, 1, True),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 4, hidden_dim * 2, 4, 2, 1, True),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim * 2, hidden_dim, 4, 2 ,1, True),
+                get_swn_conv2d_bn2d_discriminator_block(hidden_dim, 1, 4, 2, 1, False),
+                nn.Tanh()
+            )
         elif nn_type == 'gconv2d':
             self.disc = nn.Sequential(
                 GatedConv2dWithActivation(1, hidden_dim, 4, 1, 0),
@@ -211,36 +201,21 @@ class Discriminator(nn.Module):
             the sequential model
         '''
         return self.disc
-
-def get_noise(n_samples, z_dim, arch_type, device='cuda'):
-    '''
-    Function for creating noise vectors: Given the dimensions (n_samples, z_dim),
-    creates a tensor of that shape filled with random numbers from the normal distribution.
-    Parameters:
-        n_samples: the number of samples to generate, a scalar
-        z_dim: the dimension of the noise vector, a scalar
-        device: the device type
-    '''
-    if arch_type == '1D':
-        return torch.randn(n_samples,z_dim,device=device)
-    else:
-        noise_ = torch.randn((n_samples, z_dim)).view(-1, z_dim, 1, 1)
-        noise_ = Variable(noise_.cuda())
-        return noise_
     
-def train(arch_type, nn_type, batch_size, n_epochs):
-    n_epochs = n_epochs
+def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visualize):
+    n_epochs = int(n_epochs)
     arch_type = arch_type
-    batch_size = batch_size
+    batch_size = int(batch_size)
     nn_type = nn_type
-    z_dim = 100
-    display_step = 500
-    device = 'cuda'
+    device = device
+    display_step = int(display_step)
+    
     if arch_type == '2D':
         criterion = nn.BCELoss()    
         lr = 0.0002
         # Load the MNIST data in Grayscale Format
         img_size = 64
+        z_dim = 100
         transform = transforms.Compose([
                 transforms.Scale(img_size),
                 transforms.ToTensor(),
@@ -252,19 +227,23 @@ def train(arch_type, nn_type, batch_size, n_epochs):
     else:
         criterion = nn.BCEWithLogitsLoss()
         lr = 0.00001
+        z_dim = 64
+        # Load MNIST dataset as tensors
         dataloader = DataLoader(
-        MNIST('.', download=False, transform=transforms.ToTensor()),
-        batch_size=batch_size,
-        shuffle=True)
+            MNIST('.', download=True, transform=transforms.ToTensor()),
+            batch_size=batch_size,
+            shuffle=True)
 
 
 
 
     # Initialize The Generator and Discriminator Networks
-    gen = Generator(nn_type='convbn2d').to(device)
-    disc = Discriminator(nn_type='convbn2d').to(device)
-    gen.weight_init(mean=0.0, std=0.02)
-    disc.weight_init(mean=0.0, std=0.02)
+    gen = Generator(nn_type=nn_type, z_dim=z_dim).to(device)
+    disc = Discriminator(nn_type=nn_type, z_dim=z_dim).to(device)
+    
+    if arch_type == "2D":
+        gen.weight_init(mean=0.0, std=0.02)
+        disc.weight_init(mean=0.0, std=0.02)
 
     gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
     disc_opt = torch.optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
@@ -289,11 +268,12 @@ def train(arch_type, nn_type, batch_size, n_epochs):
                 # Zero out the gradients before backpropagation
                 disc_opt.zero_grad()
                 # Calculate discriminator loss
-                disc_fake_loss, disc_fake_score, disc_real_loss, y_real_samples = get_disc_loss(gen, disc, criterion, real, cur_batch_size, z_dim, device, arch_type)
+                disc_train_loss, disc_fake_score, disc_real_loss, y_real_samples = get_disc_loss(gen, disc, criterion, real, cur_batch_size, z_dim, device, arch_type)
                 # Update gradients
-                disc_fake_loss.backward() # removed retain graph for memory consumption
+                disc_train_loss.backward() # removed retain graph for memory consumption
                 # Update optimizer
                 disc_opt.step()
+                D_losses.append(disc_train_loss.data[0])
                 # For testing purposes, to keep track of the generator weights
                 if test_generator:
                     old_generator_weights = gen.gen[0][0].weight.detach().clone()
@@ -320,38 +300,63 @@ def train(arch_type, nn_type, batch_size, n_epochs):
 
                 ### Visualization code ###
                 if cur_step % display_step == 0 and cur_step > 0:
-                    print(f"Epoch: {epoch} Step {cur_step}: Generator loss: {mean_generator_loss}, discriminator loss: {mean_discriminator_loss}")
-                    p = 'MNIST_DCGAN_' + str(epoch + 1) + '.png'
-                    show_result((epoch+1), gen, path=p, isFix=False)
+                    # print(f"Epoch: {epoch} Step {cur_step}: Generator loss: {mean_generator_loss}, discriminator loss: {mean_discriminator_loss}")
+                    if visualize == "YES":
+                        p = 'results/MNIST_DCGAN_' + str(nn_type) + '_' +  str(epoch + 1) + '.png'
+                        show_result((epoch+1), gen, path=p, isFix=False)
                     train_hist['D_losses'].append(torch.mean(torch.FloatTensor(D_losses)))
+                    print(train_hist['D_losses'])
+                    print(train_hist['G_losses'])
                     train_hist['G_losses'].append(torch.mean(torch.FloatTensor(G_losses)))  
                     mean_generator_loss = 0
                     mean_discriminator_loss = 0
 
             
                 cur_step += 1
+        show_train_hist(train_hist, path='MNIST_DCGAN_train_hist.png')
+        plt.plot(train_hist['D_losses'])
+        plt.plot(train_hist['G_losses'])
+        plt.savefig("plots/MNIST_DCGAN_{}_LOSSES.png".format('nn_type'))
+
     else:
+        cur_step = 0
+        mean_generator_loss = 0
+        mean_discriminator_loss = 0
+        test_generator = True # Whether the generator should be tested
+        gen_loss = False
+        gen_losses = []
+        disc_losses = []
         for epoch in range(n_epochs):
+  
             # Dataloader returns the batches
-            for real, _ in tqdm(train_loader):
+            for real, _ in tqdm(dataloader):
                 cur_batch_size = len(real)
+
                 # Flatten the batch of real images from the dataset
                 real = real.view(cur_batch_size, -1).to(device)
+
+                ### Update discriminator ###
                 # Zero out the gradients before backpropagation
                 disc_opt.zero_grad()
+
                 # Calculate discriminator loss
-                disc_loss = get_disc_loss(gen, disc, criterion, real, cur_batch_size, z_dim, device, arch_type)
+                disc_loss = get_disc_loss_1d(gen, disc, criterion, real, cur_batch_size, z_dim, arch_type, device)
+                
+
                 # Update gradients
-                disc_loss.backward() # removed retain graph for memory consumption
+                disc_loss.backward(retain_graph=True)
+
                 # Update optimizer
                 disc_opt.step()
+
                 # For testing purposes, to keep track of the generator weights
                 if test_generator:
                     old_generator_weights = gen.gen[0][0].weight.detach().clone()
                 gen_opt.zero_grad()
-                gen_loss = get_gen_loss(gen, disc, criterion, cur_batch_size, z_dim, device, y_real_samples, arch_type)
+                gen_loss = get_gen_loss_1d(gen, disc, criterion, cur_batch_size, z_dim, arch_type, device)
                 gen_loss.backward()
                 gen_opt.step()
+
                 # For testing purposes, to check that your code changes the generator weights
                 if test_generator:
                     try:
@@ -370,21 +375,27 @@ def train(arch_type, nn_type, batch_size, n_epochs):
                 ### Visualization code ###
                 if cur_step % display_step == 0 and cur_step > 0:
                     print(f"Step {cur_step}: Generator loss: {mean_generator_loss}, discriminator loss: {mean_discriminator_loss}")
-                    fake_noise = get_noise(cur_batch_size, z_dim, arch_type, device=device)
-                    fake = gen(fake_noise)
-                    show_tensor_images(fake)
-                    show_tensor_images(real)
+                    if visualize == "YES":
+                        fake_noise = get_noise(cur_batch_size, z_dim, arch_type, device=device)
+                        fake = gen(fake_noise)
+                        show_tensor_images(fake, epoch, nn_type)
+                        show_tensor_images(real, epoch, nn_type)
+                    gen_losses.append(mean_generator_loss)
+                    disc_losses.append(mean_discriminator_loss)
                     mean_generator_loss = 0
                     mean_discriminator_loss = 0
                 cur_step += 1
+        plt.plot(gen_losses)
+        plt.plot(disc_losses)
+        plt.savefig('plots/MNIST_LINEAR_{}_LOSSES.png'.format(nn_type))
     # Save Model Weights
-    show_train_hist(train_hist, save=True, path='MNIST_DCGAN_train_hist.png')
-    torch.save(gen.state_dict(), 'gen_model.pth')
-    torch.save(disc.state_dict(), 'disc_model.pth')
+    torch.save(gen.state_dict(), 'models/gen_model_{}.pth'.format(nn_type))
+    torch.save(disc.state_dict(), 'models/disc_model_{}.pth'.format(nn_type))
 
 
 if __name__ == "__main__":
-    with open('train_config.json') as json_file:
+    config_path = 'train_config.json'
+    with open(config_path) as json_file:
         train_config = json.load(json_file)
-        print(train_config)
-        train(train_config["arch_type"], train_config["nn_type"], train_config["batch_size"], train_config["nn_epochs"])
+        print("Training Session Configuration as found at '{}' are: {}".format(config_path, train_config.values()))
+        train(train_config["arch_type"], train_config["nn_type"], train_config["batch_size"], train_config["n_epochs"], train_config["display_step"] ,train_config["device"], train_config["visualize"])
