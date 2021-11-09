@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from torch.autograd import Variable
 torch.manual_seed(0) # Set for testing purposes, please do not change!
 
-def get_noise(n_samples, z_dim, device='cuda'):
+def get_noise(n_samples, z_dim, arch_type, device='cuda'):
     '''
     Function for creating noise vectors: Given the dimensions (n_samples, z_dim),
     creates a tensor of that shape filled with random numbers from the normal distribution.
@@ -15,11 +15,12 @@ def get_noise(n_samples, z_dim, device='cuda'):
         z_dim: the dimension of the noise vector, a scalar
         device: the device type
     '''
-    # return torch.randn((n_samples, z_dim).view(-1, z_dim, 1, 1)
-    # return torch.randn(n_samples,z_dim,device=device)
-    noise_ = torch.randn((n_samples, z_dim)).view(-1, z_dim, 1, 1)
-    noise_ = Variable(noise_.cuda())
-    return noise_
+    if arch_type == '1D':
+        return torch.randn(n_samples,z_dim,device=device)
+    else:
+        noise_ = torch.randn((n_samples, z_dim)).view(-1, z_dim, 1, 1)
+        noise_ = Variable(noise_.cuda())
+        return noise_
 
 def show_tensor_images(image_tensor, num_images=25, size=(1, 28, 28)):
     '''
@@ -59,7 +60,7 @@ def show_result(num_epoch, gen, path = 'result.png', isFix=False):
     if isFix:
         test_images = gen(fixed_z_)
     else:
-        test_images = G(z_)
+        test_images = gen(z_)
     gen.train()
 
     size_figure_grid = 5

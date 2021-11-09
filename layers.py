@@ -104,7 +104,7 @@ def get_swn_conv2d_bn2d_generator_block(input_dim, output_dim, kernel_s, stride,
     if batch_n:
       return nn.Sequential(
           nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
-          SpectralNormTorch(output_dim),
+          SpectralNorm(output_dim),
           nn.ReLU(inplace=True)
       )
     return nn.Sequential(
@@ -141,7 +141,7 @@ def get_swn_gated_conv_generator_block(input_dim, output_dim, kernel_s, stride, 
     '''
     return nn.Sequential(
         nn.ConvTranspose2d(input_dim, output_dim, kernel_s, stride, pad),
-        SpectralNormTorch(output_dim),
+        SpectralNorm(output_dim),
         nn.ReLU(inplace=True)
     )
     
@@ -208,7 +208,7 @@ def get_swn_gated_conv_discriminator_block(input_dim, output_dim, kernel_size, s
     '''
     return nn.Sequential(
         GatedConv2dWithActivation(input_dim, output_dim, kernel_size, stride, pad),
-        SpectralNormTorch(output_dim),
+        SpectralNorm(output_dim),
         nn.LeakyReLU(0.2, inplace=True)
     )
 
@@ -224,7 +224,7 @@ def get_swn_conv2d_bn2d_discriminator_block(input_dim, output_dim, kernel_size, 
     '''
     return nn.Sequential(
         nn.Conv2d(input_dim, output_dim, kernel_size, 2, pad),
-        SpectralNormTorch(output_dim),
+        SpectralNorm(output_dim),
         nn.LeakyReLU(0.2, inplace=True)
     )
 
