@@ -72,11 +72,11 @@ class Generator(nn.Module):
         
         elif nn_type == 'swnconvbn2d':
           self.gen = nn.Sequential(
-              get_swn_conv2d_bn2d_generator_block(z_dim, hidden_dim * 8, 4, 1, 0, True),
-              get_swn_conv2d_bn2d_generator_block(hidden_dim * 8, hidden_dim * 4, 4, 2, 1, True),
-              get_swn_conv2d_bn2d_generator_block(hidden_dim * 4, hidden_dim * 2, 4, 2, 1, True),
-              get_swn_conv2d_bn2d_generator_block(hidden_dim * 2, hidden_dim, 4, 2 ,1, True),
-              get_swn_conv2d_bn2d_generator_block(hidden_dim, 1, 4, 2, 1, False),
+              get_conv2d_bn2d_generator_block(z_dim, hidden_dim * 8, 4, 1, 0, True),
+              get_conv2d_bn2d_generator_block(hidden_dim * 8, hidden_dim * 4, 4, 2, 1, True),
+              get_conv2d_bn2d_generator_block(hidden_dim * 4, hidden_dim * 2, 4, 2, 1, True),
+              get_conv2d_bn2d_generator_block(hidden_dim * 2, hidden_dim, 4, 2 ,1, True),
+              get_conv2d_bn2d_generator_block(hidden_dim, 1, 4, 2, 1, False),
               nn.Tanh()
           )
         elif nn_type == 'gconv2d':
@@ -165,7 +165,6 @@ class Discriminator(nn.Module):
                 nn.Conv2d(hidden_dim * 8, 1, 4, 1, 0), 
                 nn.Sigmoid()
             )
-
         elif nn_type == 'gconv2d':
             self.disc = nn.Sequential(
                 GatedConv2dWithActivation(1, hidden_dim, 4, 1, 0),
@@ -244,15 +243,13 @@ def train(arch_type, nn_type, batch_size, n_epochs, display_step, device, visual
 
 
     # Initialize The Generator and Discriminator Networks
-    # gen = Generator(nn_type=nn_type, z_dim=z_dim).to(device)
-    # disc = Discriminator(nn_type=nn_type, z_dim=z_dim).to(device)
-    gen = Generator(128).to(device)
-    disc = Discriminator().to(device)
+    gen = Generator(nn_type=nn_type, z_dim=z_dim).to(device)
+    disc = Discriminator(nn_type=nn_type, z_dim=z_dim).to(device)
     
     
-    # if arch_type == "2D":
-    #     gen.weight_init(mean=0.0, std=0.02)
-    #     disc.weight_init(mean=0.0, std=0.02)
+    if arch_type == "2D":
+        gen.weight_init(mean=0.0, std=0.02)
+        disc.weight_init(mean=0.0, std=0.02)
     if nn_type == "swnconvbn2d":
         disc_opt = torch.optim.Adam(filter(lambda p: p.requires_grad, disc.parameters()), lr=lr, betas=(0.0,0.9))
         gen_opt  = torch.optim.Adam(disc.parameters(), lr=lr, betas=(0.0,0.9))

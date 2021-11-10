@@ -1,5 +1,2 @@
-results/*
-plots/*
-__pycache__/
 data/
 MNIST/
