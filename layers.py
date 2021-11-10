@@ -208,10 +208,8 @@ def get_swn_gated_conv_discriminator_block(input_dim, output_dim, kernel_size, s
     Returns:
         a discriminator neural network layer, with a linear transformation 
     '''
-    swn = SpectralNorm()
     return nn.Sequential(
-        GatedConv2dWithActivation(input_dim, output_dim, kernel_size, stride, pad),
-        SpectralNorm(),
+        SpectralNorm(GatedConv2dWithActivation(input_dim, output_dim, kernel_size, stride, pad)),
         nn.LeakyReLU(0.2, inplace=True)
     )
 

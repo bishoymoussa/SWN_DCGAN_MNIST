@@ -1,7 +1,7 @@
 {
     "arch_type" : "2D",
-    "nn_type" : "swnconvbn2d",
-    "batch_size": "256",
+    "nn_type" : "conv2d",
+    "batch_size": "32",
     "n_epochs": "2",
     "display_step":"2",
     "device": "cuda",

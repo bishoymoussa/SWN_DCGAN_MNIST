@@ -11,8 +11,9 @@ def l2normalize(v, eps=1e-12):
     return v / (v.norm() + eps)
 
 
-class SpectralNormnp(nn.Module):
+class SpectralNormNp(nn.Module):
     def forward(self, w, power_iterations=1):
+        # w = w.cpu().detach().numpy()
         height = w.shape[0]
         for _ in range(power_iterations):
             v = l2normalize(torch.mv(torch.t(w.view(height,-1)), u))
